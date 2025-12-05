@@ -1,0 +1,61 @@
+---
+# Namespace: turia-trails
+# Purpose: Logical isolation for all Turia Trails components
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: turia-trails
+  labels:
+    app.kubernetes.io/name: turia-trails
+    app.kubernetes.io/part-of: turia-trails
+    app.kubernetes.io/managed-by: kubectl
+    # Security labels
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+  annotations:
+    # Resource quotas will be applied
+    scheduler.alpha.kubernetes.io/defaultTolerations: "[]"
+---
+# ResourceQuota: Limit total resources in namespace
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: turia-trails-quota
+  namespace: turia-trails
+spec:
+  hard:
+    # Compute resources
+    requests.cpu: "100"
+    requests.memory: 500Gi
+    limits.cpu: "200"
+    limits.memory: 1000Gi
+    # Object counts
+    pods: "200"
+    services: "50"
+    secrets: "100"
+    configmaps: "100"
+    persistentvolumeclaims: "50"
+---
+# LimitRange: Default resource limits for pods
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: turia-trails-limits
+  namespace: turia-trails
+spec:
+  limits:
+    # Default limits for containers
+    - default:
+        cpu: "1"
+        memory: 2Gi
+      defaultRequest:
+        cpu: 100m
+        memory: 256Mi
+      type: Container
+    # PVC size limits
+    - max:
+        storage: 10Ti
+      min:
+        storage: 1Gi
+      type: PersistentVolumeClaim

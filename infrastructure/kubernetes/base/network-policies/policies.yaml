@@ -1,0 +1,201 @@
+---
+# NetworkPolicy: Default deny all ingress
+# Purpose: Zero-trust - deny all traffic by default
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: turia-trails
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+---
+# NetworkPolicy: Default deny all egress (optional - more restrictive)
+# Uncomment if you want strict egress control
+# apiVersion: networking.k8s.io/v1
+# kind: NetworkPolicy
+# metadata:
+#   name: default-deny-egress
+#   namespace: turia-trails
+# spec:
+#   podSelector: {}
+#   policyTypes:
+#     - Egress
+---
+# NetworkPolicy: Allow DNS egress (required for service discovery)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns-egress
+  namespace: turia-trails
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+---
+# NetworkPolicy: Allow ingress from Ingress Controller
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ingress-controller
+  namespace: turia-trails
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/component: api
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 8080
+---
+# NetworkPolicy: Allow internal namespace traffic
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-internal
+  namespace: turia-trails
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector: {}
+  egress:
+    - to:
+        - podSelector: {}
+---
+# NetworkPolicy: Redpanda cluster communication
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: redpanda-cluster
+  namespace: turia-trails
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: redpanda
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Kafka clients (Vector, consumers)
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: vector
+      ports:
+        - protocol: TCP
+          port: 9092  # Kafka API
+    # Internal cluster communication
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: redpanda
+      ports:
+        - protocol: TCP
+          port: 33145  # Internal RPC
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: redpanda
+      ports:
+        - protocol: TCP
+          port: 33145
+---
+# NetworkPolicy: ClickHouse cluster communication
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: clickhouse-cluster
+  namespace: turia-trails
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: clickhouse
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # HTTP clients (Vector, Query API)
+    - from:
+        - podSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/component
+                operator: In
+                values: [vector, query-api]
+      ports:
+        - protocol: TCP
+          port: 8123  # HTTP
+    # Native clients
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: clickhouse
+      ports:
+        - protocol: TCP
+          port: 9000  # Native
+        - protocol: TCP
+          port: 9009  # Interserver
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: clickhouse
+---
+# NetworkPolicy: OpenSearch cluster communication
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: opensearch-cluster
+  namespace: turia-trails
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: opensearch
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # REST API clients
+    - from:
+        - podSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/component
+                operator: In
+                values: [vector, query-api]
+      ports:
+        - protocol: TCP
+          port: 9200
+    # Cluster transport
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: opensearch
+      ports:
+        - protocol: TCP
+          port: 9300
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: opensearch

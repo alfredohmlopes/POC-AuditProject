@@ -1,0 +1,170 @@
+---
+# ServiceAccount: turia-trails-admin
+# Purpose: Admin access for platform operators
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: turia-trails-admin
+  namespace: turia-trails
+  labels:
+    app.kubernetes.io/name: turia-trails
+    app.kubernetes.io/component: rbac
+---
+# ServiceAccount: turia-trails-developer
+# Purpose: Developer access (read + deploy)
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: turia-trails-developer
+  namespace: turia-trails
+  labels:
+    app.kubernetes.io/name: turia-trails
+    app.kubernetes.io/component: rbac
+---
+# ServiceAccount: turia-trails-viewer
+# Purpose: Read-only access for monitoring
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: turia-trails-viewer
+  namespace: turia-trails
+  labels:
+    app.kubernetes.io/name: turia-trails
+    app.kubernetes.io/component: rbac
+---
+# ClusterRole: Admin - Full access to namespace resources
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: turia-trails-admin
+  namespace: turia-trails
+rules:
+  # Full access to all resources
+  - apiGroups: [""]
+    resources: ["*"]
+    verbs: ["*"]
+  - apiGroups: ["apps"]
+    resources: ["*"]
+    verbs: ["*"]
+  - apiGroups: ["batch"]
+    resources: ["*"]
+    verbs: ["*"]
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["*"]
+    verbs: ["*"]
+  - apiGroups: ["policy"]
+    resources: ["*"]
+    verbs: ["*"]
+  - apiGroups: ["autoscaling"]
+    resources: ["*"]
+    verbs: ["*"]
+---
+# Role: Developer - Deploy and manage workloads
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: turia-trails-developer
+  namespace: turia-trails
+rules:
+  # Read access to most resources
+  - apiGroups: [""]
+    resources: ["pods", "services", "configmaps", "secrets", "persistentvolumeclaims"]
+    verbs: ["get", "list", "watch"]
+  # Manage deployments
+  - apiGroups: ["apps"]
+    resources: ["deployments", "statefulsets", "daemonsets", "replicasets"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  # Manage jobs
+  - apiGroups: ["batch"]
+    resources: ["jobs", "cronjobs"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  # Read logs
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get", "list", "watch"]
+  # Port forward for debugging
+  - apiGroups: [""]
+    resources: ["pods/portforward", "pods/exec"]
+    verbs: ["create"]
+  # Manage ConfigMaps (non-sensitive)
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["create", "update", "patch", "delete"]
+---
+# Role: Viewer - Read-only access
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: turia-trails-viewer
+  namespace: turia-trails
+rules:
+  # Read access to workloads
+  - apiGroups: [""]
+    resources: ["pods", "services", "configmaps", "persistentvolumeclaims", "events"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "statefulsets", "daemonsets", "replicasets"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["batch"]
+    resources: ["jobs", "cronjobs"]
+    verbs: ["get", "list", "watch"]
+  # Read logs
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get", "list", "watch"]
+  # Read HPA/VPA
+  - apiGroups: ["autoscaling"]
+    resources: ["horizontalpodautoscalers"]
+    verbs: ["get", "list", "watch"]
+---
+# RoleBinding: Admin
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: turia-trails-admin-binding
+  namespace: turia-trails
+subjects:
+  - kind: ServiceAccount
+    name: turia-trails-admin
+    namespace: turia-trails
+  # Add users/groups here
+  # - kind: User
+  #   name: admin@example.com
+  #   apiGroup: rbac.authorization.k8s.io
+  # - kind: Group
+  #   name: platform-admins
+  #   apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: Role
+  name: turia-trails-admin
+  apiGroup: rbac.authorization.k8s.io
+---
+# RoleBinding: Developer
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: turia-trails-developer-binding
+  namespace: turia-trails
+subjects:
+  - kind: ServiceAccount
+    name: turia-trails-developer
+    namespace: turia-trails
+roleRef:
+  kind: Role
+  name: turia-trails-developer
+  apiGroup: rbac.authorization.k8s.io
+---
+# RoleBinding: Viewer
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: turia-trails-viewer-binding
+  namespace: turia-trails
+subjects:
+  - kind: ServiceAccount
+    name: turia-trails-viewer
+    namespace: turia-trails
+roleRef:
+  kind: Role
+  name: turia-trails-viewer
+  apiGroup: rbac.authorization.k8s.io

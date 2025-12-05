@@ -1,0 +1,27 @@
+---
+# Root Kustomization for Turia Trails Infrastructure
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Install order matters
+resources:
+  # 1. Base configuration (namespace, RBAC, storage)
+  - base/
+  
+  # 2. Ingress controller
+  - ingress/nginx/
+  
+  # 3. Certificate management (requires cert-manager CRDs installed)
+  # - cert-manager/
+  
+  # 4. Monitoring
+  - monitoring/
+
+commonLabels:
+  app.kubernetes.io/part-of: turia-trails
+  environment: production
+
+# Global annotations
+commonAnnotations:
+  team: platform
+  managed-by: kustomize

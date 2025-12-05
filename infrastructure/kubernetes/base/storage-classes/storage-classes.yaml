@@ -1,0 +1,56 @@
+---
+# StorageClass: NVMe SSD (Fast)
+# Purpose: High-performance storage for databases (ClickHouse, OpenSearch, Redpanda)
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: nvme-ssd
+  labels:
+    app.kubernetes.io/name: turia-trails
+    app.kubernetes.io/component: storage
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "false"
+provisioner: kubernetes.io/no-provisioner  # Change to your CSI driver
+volumeBindingMode: WaitForFirstConsumer
+reclaimPolicy: Retain
+allowVolumeExpansion: true
+parameters:
+  type: nvme-ssd
+  # For cloud providers, adjust parameters:
+  # AWS EBS: provisioner = ebs.csi.aws.com, type = gp3/io2
+  # GCP PD: provisioner = pd.csi.storage.gke.io, type = pd-ssd
+  # Local: provisioner = kubernetes.io/no-provisioner
+---
+# StorageClass: Standard SSD
+# Purpose: General workloads, less critical data
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: standard-ssd
+  labels:
+    app.kubernetes.io/name: turia-trails
+    app.kubernetes.io/component: storage
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+provisioner: kubernetes.io/no-provisioner
+volumeBindingMode: WaitForFirstConsumer
+reclaimPolicy: Delete
+allowVolumeExpansion: true
+parameters:
+  type: ssd
+---
+# StorageClass: HDD (Cold Storage)
+# Purpose: Backups, cold data, logs
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: hdd-cold
+  labels:
+    app.kubernetes.io/name: turia-trails
+    app.kubernetes.io/component: storage
+provisioner: kubernetes.io/no-provisioner
+volumeBindingMode: WaitForFirstConsumer
+reclaimPolicy: Retain
+allowVolumeExpansion: true
+parameters:
+  type: hdd
