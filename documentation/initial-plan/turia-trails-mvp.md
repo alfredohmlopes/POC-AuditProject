@@ -422,7 +422,6 @@ Entregar uma **plataforma funcional de auditoria de identidade** que permita aos
 |---------|---------------|------------------|
 | **ID Magalu** | Core de identidade, alto volume | Login, registro, MFA |
 | **RBAC Service** | Gestão de permissões, compliance crítico | Role assign, permission grant |
-| **User Management** | CRUD de usuários, visibilidade obrigatória | User CRUD, invite |
 
 ---
 
