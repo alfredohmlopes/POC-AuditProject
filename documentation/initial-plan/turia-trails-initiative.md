@@ -281,8 +281,6 @@ As áreas de **Auditoria**, **Risco**, **Segurança**, **Compliance** e **Juríd
 2. **Ruby** - Rails applications
 3. **Python** - Data/ML pipelines
 4. **JavaScript/TypeScript** - Frontend and Node.js
-5. **Java/Kotlin** - Android and enterprise
-6. **Swift** - iOS applications
 
 **SDK Features:**
 - ✅ Automatic retry with exponential backoff
