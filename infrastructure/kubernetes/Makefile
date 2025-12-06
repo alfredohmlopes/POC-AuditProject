@@ -19,17 +19,6 @@ setup:
 	@echo "📦 Installing Cert-Manager (Helm)..."
 	helm repo add jetstack https://charts.jetstack.io
 	helm repo update
-	helm upgrade --install cert-manager jetstack/cert-manager \
-		--namespace cert-manager \
-		--create-namespace \
-		--version $(CERT_MANAGER_VERSION) \
-		--set installCRDs=true \
-		--wait
-
-# 2. Deploy Infrastructure Manifests
-deploy:
-	@echo "🏗️ Applying Kubernetes Manifests (Kustomize)..."
-	kubectl apply -k .
 
 # 3. Verify Installation
 verify:

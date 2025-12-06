@@ -1,0 +1,73 @@
+# Redpanda Helm Chart Values (redpanda/redpanda)
+# Adapted for local Kind cluster
+
+# Cluster configuration
+statefulset:
+  replicas: 3
+  budget:
+    maxUnavailable: 1
+
+# Resource limits (Low for Kind)
+resources:
+  cpu:
+    cores: 100m
+  memory:
+    container:
+      min: 1.5Gi
+      max: 1.5Gi
+
+# Storage
+storage:
+  persistentVolume:
+    enabled: true
+    size: 20Gi
+    storageClass: standard-ssd
+
+# Authentication (SASL)
+auth:
+  sasl:
+    enabled: true
+    users:
+      - name: admin
+        password: "changeme_admin123"
+        mechanism: SCRAM-SHA-256
+      - name: turia-producer
+        password: "changeme_producer123"
+        mechanism: SCRAM-SHA-256
+      - name: turia-consumer
+        password: "changeme_consumer123"
+        mechanism: SCRAM-SHA-256
+
+# TLS
+tls:
+  enabled: true
+  certs:
+    default:
+      issuerRef:
+        name: selfsigned-issuer
+        kind: ClusterIssuer
+
+# External Access (NodePort for Kind)
+external:
+  enabled: true
+  type: NodePort
+  domain: redpanda.local
+
+# Console
+console:
+  enabled: true
+  replicaCount: 1
+  extraEnv:
+    - name: KAFKA_TLS_INSECURE_SKIP_VERIFY
+      value: "true"
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+# Logging
+logging:
+  logLevel: info

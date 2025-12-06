@@ -16,13 +16,8 @@ reclaimPolicy: Retain
 allowVolumeExpansion: true
 parameters:
   type: nvme-ssd
-  # For cloud providers, adjust parameters:
-  # AWS EBS: provisioner = ebs.csi.aws.com, type = gp3/io2
-  # GCP PD: provisioner = pd.csi.storage.gke.io, type = pd-ssd
-  # Local: provisioner = kubernetes.io/no-provisioner
 ---
-# StorageClass: Standard SSD
-# Purpose: General workloads, less critical data
+# Standard SSD (Default)
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
@@ -32,12 +27,12 @@ metadata:
     app.kubernetes.io/component: storage
   annotations:
     storageclass.kubernetes.io/is-default-class: "true"
-provisioner: kubernetes.io/no-provisioner
+provisioner: rancher.io/local-path # Changed for Kind support
 volumeBindingMode: WaitForFirstConsumer
-reclaimPolicy: Delete
 allowVolumeExpansion: true
+reclaimPolicy: Delete
 parameters:
-  type: ssd
+  type: pd-ssd # Cloud specific, ignored by local-path
 ---
 # StorageClass: HDD (Cold Storage)
 # Purpose: Backups, cold data, logs

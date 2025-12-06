@@ -1,0 +1,70 @@
+---
+# Namespace for Redpanda resources (if not using the operator namespace)
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: redpanda
+  labels:
+    app.kubernetes.io/name: redpanda
+---
+# Redpanda Cluster Custom Resource
+apiVersion: cluster.redpanda.com/v1alpha2
+kind: Redpanda
+metadata:
+  name: redpanda
+  namespace: redpanda
+spec:
+  chartRef: {}
+  clusterSpec:
+    # 3 Brokers for HA
+    statefulset:
+      replicas: 3
+    
+    # Configuration for authentication and TLS
+    auth:
+      sasl:
+        enabled: true
+        # Use Secret for users management
+        secretRef: redpanda-users
+    
+    tls:
+      enabled: true
+      # Using cert-manager to issue certs
+      certs:
+        default:
+          issuerRef:
+            name: selfsigned-issuer # Using local issuer for Kind
+            kind: ClusterIssuer
+            
+    # Storage Configuration
+    storage:
+      persistentVolume:
+        enabled: true
+        size: 20Gi # Reduced from 1Ti for local Kind
+        storageClass: standard-ssd # Using our defined SC
+        
+    # Resource allocation (Reduced for local Kind environment)
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1Gi
+      limits:
+        cpu: 1
+        memory: 2Gi
+      
+    # Expose settings for external access (NodePort for Kind)
+    external:
+      enabled: true
+      type: NodePort
+      domain: redpanda.local
+      
+    # Redpanda Console (Management UI)
+    console:
+      enabled: true
+      resources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi

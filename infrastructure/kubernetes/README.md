@@ -20,19 +20,20 @@ Para garantir que o provisionamento seja tranquilo na Cloud, usamos o padrão **
 
 Atualmente estamos trabalhando no ambiente **Base** + configurações compatíveis com local.
 
-## Automation (`Makefile`)
+## Automation
 
-Para evitar comandos manuais, todo o processo de setup está codificado no `Makefile`:
+Para facilitar, usamos scripts de automação:
+
+- **Linux/Mac**: `Makefile`
+- **Windows**: `setup.ps1`
 
 ```bash
-# Provisiona cluster, instala deps (Helm) e aplica manifests
-make all
+# Windows
+.\setup.ps1
 
-# Apenas atualiza manifests
+# Linux/Mac
+make setup
 make deploy
-
-# Destroi tudo
-make clean
 ```
 
 ## Directory Structure
