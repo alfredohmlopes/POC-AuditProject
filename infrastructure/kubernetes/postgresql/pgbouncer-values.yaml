@@ -1,0 +1,28 @@
+postgresql:
+  host: postgresql
+  port: 5432
+  username: postgres
+  password: changeme_postgres123 # Passed via secret in prod, but here for simplicity or via existingSecret
+
+auth:
+  adminUser: postgres
+  existingSecret: postgres-creds
+  secretKeys:
+    adminPasswordKey: pgbouncer-password
+    # Bitnami pgbouncer chart uses 'backendPassword' or similar to connect to PG?
+    # Actually, it needs to know how to auth to backend.
+    
+# Checking bitnami/pgbouncer values structure is critical.
+# Assuming standard:
+listenPort: 6432
+extraEnvVars:
+  - name: POSTGRESQL_PASSWORD
+    valueFrom:
+      secretKeyRef:
+        name: postgres-creds
+        key: postgres-password
+
+# Connection pooling settings
+poolMode: session
+maxClientConn: 100
+defaultPoolSize: 20

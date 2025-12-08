@@ -1,0 +1,50 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: postgres-backup
+  namespace: postgresql
+spec:
+  schedule: "0 2 * * *" # Daily at 2 AM
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: postgres-backup
+            image: bitnami/postgresql:16
+            command: ["/bin/sh", "-c"]
+            args:
+            - |
+              echo "Starting backup..."
+              export PGPASSWORD=$POSTGRES_PASSWORD
+              mkdir -p /backup
+              pg_dump -h postgresql -U postgres -d turia_trails > /backup/turia_trails_$(date +%Y%m%d_%H%M%S).sql
+              echo "Backup completed."
+              ls -lh /backup
+            env:
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-creds
+                  key: postgres-password
+            volumeMounts:
+            - name: backup-storage
+              mountPath: /backup
+          restartPolicy: OnFailure
+          volumes:
+          - name: backup-storage
+            persistentVolumeClaim:
+              claimName: postgres-backup-pvc
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-backup-pvc
+  namespace: postgresql
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: standard-ssd
+  resources:
+    requests:
+      storage: 5Gi

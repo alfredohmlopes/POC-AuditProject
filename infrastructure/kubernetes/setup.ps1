@@ -71,6 +71,26 @@ function Install-OpenSearch {
     Write-Host "OpenSearch installation initiated." -ForegroundColor Green
 }
 
+function Install-Postgres {
+    Write-Host "🐘 Installing PostgreSQL..." -ForegroundColor Cyan
+    kubectl create namespace postgresql --dry-run=client -o yaml | kubectl apply -f -
+    kubectl apply -k postgresql/
+    helm repo add bitnami https://charts.bitnami.com/bitnami
+    helm repo update
+    helm upgrade --install postgresql bitnami/postgresql `
+        --namespace postgresql `
+        -f postgresql/values.yaml `
+        --wait
+    
+    Write-Host "🐘 Installing PgBouncer..."
+    helm upgrade --install postgresql-pgbouncer bitnami/pgbouncer `
+        --namespace postgresql `
+        -f postgresql/pgbouncer-values.yaml `
+        --set postgresql.password=changeme_postgres123 `
+        --wait
+    Write-Host "PostgreSQL & PgBouncer installed." -ForegroundColor Green
+}
+
 # --- Main Execution ---
 
 # 4. Install Redpanda
@@ -81,5 +101,8 @@ Install-ClickHouse
 
 # 6. Install OpenSearch
 Install-OpenSearch
+
+# 7. Install PostgreSQL
+Install-Postgres
 
 Write-Host "✅ Infrastructure setup completed successfully!" -ForegroundColor Green

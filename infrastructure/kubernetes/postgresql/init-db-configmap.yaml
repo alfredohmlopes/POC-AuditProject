@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-init-scripts
+  namespace: postgresql
+data:
+  01-init-schemas.sql: |
+    CREATE DATABASE turia_trails;
+    \c turia_trails
+    CREATE SCHEMA IF NOT EXISTS auth;
+    CREATE SCHEMA IF NOT EXISTS alerts;
+    -- public schema exists by default

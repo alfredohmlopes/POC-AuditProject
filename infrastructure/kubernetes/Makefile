@@ -27,4 +27,21 @@ install-opensearch:
 	# Create Basic Auth Secret manually for simplicity if not using a generator
 	# Username: admin, Password: changeme_admin123
 	kubectl create secret generic admin-credentials --from-literal=password=changeme_admin123 --from-literal=username=admin -n opensearch --dry-run=client -o yaml | kubectl apply -f -
-	kubectl apply -k opensearch/ter --name $(CLUSTER_NAME)
+	kubectl apply -k opensearch/
+
+install-postgres:
+	@echo "Installing PostgreSQL..."
+	kubectl create namespace postgresql --dry-run=client -o yaml | kubectl apply -f -
+	kubectl apply -k postgresql/
+	helm repo add bitnami https://charts.bitnami.com/bitnami
+	helm repo update
+	helm upgrade --install postgresql bitnami/postgresql \
+		--namespace postgresql \
+		-f postgresql/values.yaml \
+		--wait
+	@echo "Installing PgBouncer..."
+	helm upgrade --install postgresql-pgbouncer bitnami/pgbouncer \
+		--namespace postgresql \
+		-f postgresql/pgbouncer-values.yaml \
+		--set postgresql.password=changeme_postgres123 \
+		--wait
