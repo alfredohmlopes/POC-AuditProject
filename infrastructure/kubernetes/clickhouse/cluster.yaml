@@ -1,0 +1,93 @@
+apiVersion: clickhouse.altinity.com/v1
+kind: ClickHouseInstallation
+metadata:
+  name: audit-cluster
+  namespace: clickhouse
+spec:
+  defaults:
+    templates:
+      podTemplate: pod-template
+      dataVolumeClaimTemplate: data-volume-template
+      logVolumeClaimTemplate: log-volume-template
+  configuration:
+    users:
+      # efficient_user_profile
+      admin/password: "changeme_admin123"
+      admin/networks/ip: "::/0"
+      admin/profile: default
+      
+      writer/password: "changeme_writer123"
+      writer/networks/ip: "::/0"
+      writer/profile: default
+
+      reader/password: "changeme_reader123"
+      reader/networks/ip: "::/0"
+      reader/profile: default
+
+    clusters:
+      - name: "audit"
+        layout:
+          shardsCount: 1
+          replicasCount: 3
+        templates:
+          podTemplate: pod-template
+          volumeClaimTemplate: data-volume-template
+          clusterServiceTemplate: cluster-service-template
+
+    zookeeper:
+      nodes:
+        - host: clickhouse-keeper-0.clickhouse-keeper.clickhouse.svc.cluster.local
+          port: 2181
+        - host: clickhouse-keeper-1.clickhouse-keeper.clickhouse.svc.cluster.local
+          port: 2181
+        - host: clickhouse-keeper-2.clickhouse-keeper.clickhouse.svc.cluster.local
+          port: 2181
+
+  templates:
+    podTemplates:
+      - name: pod-template
+        spec:
+          containers:
+            - name: clickhouse
+              image: clickhouse/clickhouse-server:23.8
+              resources:
+                requests:
+                  memory: "1.5Gi"
+                  cpu: "500m"
+                limits:
+                  memory: "2Gi"
+                  cpu: "1"
+              volumeMounts:
+                - name: data-volume-template
+                  mountPath: /var/lib/clickhouse
+                - name: log-volume-template
+                  mountPath: /var/log/clickhouse-server
+
+    volumeClaimTemplates:
+      - name: data-volume-template
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 20Gi
+          storageClassName: standard-ssd
+      - name: log-volume-template
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 10Gi
+          storageClassName: standard-ssd
+    
+    serviceTemplates:
+      - name: cluster-service-template
+        generateName: "clickhouse-{conf_cluster}"
+        spec:
+          ports:
+            - name: http
+              port: 8123
+            - name: tcp
+              port: 9000
+          type: ClusterIP

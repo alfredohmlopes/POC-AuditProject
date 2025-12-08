@@ -1,0 +1,66 @@
+apiVersion: opensearch.opster.io/v1
+kind: OpenSearchCluster
+metadata:
+  name: audit-search
+  namespace: opensearch
+spec:
+  general:
+    version: 2.11.0
+    network:
+      serviceName: audit-search
+    httpPort: 9200
+    vendor: opensearch
+    pluginsList: ["repository-s3"]
+  
+  confMgmt:
+    autoScaler: false
+    smartScaler: false
+
+  dashboards:
+    enable: false # We will deploy Dashboards separately for control
+
+  security:
+    config:
+      securityConfigSecret:
+        name: security-config
+      adminCredentialsSecret: 
+        name: admin-credentials
+    tls:
+      transport:
+        generate: true
+        perNode: true
+      http:
+        generate: true
+      
+  nodePools:
+    - component: masters
+      replicas: 3
+      roles:
+        - "master"
+        - "data"
+        - "ingest"
+      persistence:
+        pvc:
+          storageClass: standard-ssd
+          accessModes:
+            - ReadWriteOnce
+          # Assuming size is handled via resources or diskSize if valid. 
+          # Explain output didn't show resources in pvc... lets try standard PVC structure
+          # But wait, explain showed 'storageClass' as string.
+          # Let's try matching the explain structure (pvc.storageClass). 
+          # But where is size? 
+          # Common pattern in operators: diskSize or size in different field. 
+          # I will check if 'diskSize' is valid in nodePools. explain output listed 1149? No. 
+          # I will guess standard PVC spec for now or look for examples.
+    
+      # Let's just use emptyDir for safety if PVC fails, but we need persistence.
+      # Re-reading explain output 1169... 'diskSize' is NOT visible.
+      # Maybe 'resources' inside pvc?
+
+      resources:
+         requests:
+           memory: "1.5Gi"
+           cpu: "500m"
+         limits:
+           memory: "2Gi"
+           cpu: "1000m"

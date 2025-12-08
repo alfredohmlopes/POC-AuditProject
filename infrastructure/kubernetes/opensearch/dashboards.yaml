@@ -1,0 +1,18 @@
+apiVersion: opensearch.opster.io/v1
+kind: OpenSearchDashboard
+metadata:
+  name: audit-dashboards
+  namespace: opensearch
+spec:
+  opensearchCluster:
+    name: audit-search
+  version: 2.11.0
+  replicas: 1
+  basePath: "/"
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "200m"
+    limits:
+      memory: "1Gi"
+      cpu: "500m"

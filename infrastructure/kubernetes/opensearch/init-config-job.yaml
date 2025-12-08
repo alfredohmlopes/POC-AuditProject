@@ -1,0 +1,128 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: opensearch-init-config
+  namespace: opensearch
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: curl-client
+          image: curlimages/curl:8.4.0
+          env:
+            - name: OPENSEARCH_HOST
+              value: "https://audit-search.opensearch.svc.cluster.local:9200"
+            - name: ADMIN_USER
+              value: "admin"
+            - name: ADMIN_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: admin-credentials
+                  key: password
+          command:
+            - "/bin/sh"
+            - "-c"
+            - |
+              set -e
+              echo "Waiting for OpenSearch..."
+              until curl -k -u "$ADMIN_USER:$ADMIN_PASS" "$OPENSEARCH_HOST/_cluster/health"; do
+                echo "Waiting..."
+                sleep 10
+              done
+
+              echo "Creating ISM Policy (audit-log-rotation)..."
+              curl -k -u "$ADMIN_USER:$ADMIN_PASS" -X PUT "$OPENSEARCH_HOST/_plugins/_ism/policies/audit-log-rotation" -H 'Content-Type: application/json' -d '{
+                "policy": {
+                  "description": "Rotate audit logs daily and delete after 90 days",
+                  "default_state": "hot",
+                  "states": [
+                    {
+                      "name": "hot",
+                      "actions": [],
+                      "transitions": [
+                        {
+                          "state_name": "warm",
+                          "conditions": {
+                            "min_index_age": "1d"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "name": "warm",
+                      "actions": [
+                        {
+                          "replica_count": {
+                            "number_of_replicas": 1
+                          }
+                        }
+                      ],
+                      "transitions": [
+                        {
+                          "state_name": "delete",
+                          "conditions": {
+                            "min_index_age": "90d"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "name": "delete",
+                      "actions": [
+                        {
+                          "delete": {}
+                        }
+                      ],
+                      "transitions": []
+                    }
+                  ]
+                }
+              }'
+
+              echo "Creating Index Template (audit-events-template)..."
+              curl -k -u "$ADMIN_USER:$ADMIN_PASS" -X PUT "$OPENSEARCH_HOST/_index_template/audit-events-template" -H 'Content-Type: application/json' -d '{
+                "index_patterns": ["audit-events-*"],
+                "template": {
+                  "settings": {
+                    "number_of_shards": 3,
+                    "number_of_replicas": 1,
+                    "plugins.index_state_management.policy_id": "audit-log-rotation"
+                  },
+                  "mappings": {
+                    "properties": {
+                      "timestamp": { "type": "date" },
+                      "actor": { 
+                        "properties": {
+                          "id": { "type": "keyword" },
+                          "email": { "type": "keyword" },
+                          "type": { "type": "keyword" }
+                        }
+                      },
+                      "action": { "type": "keyword" },
+                      "resource": {
+                        "properties": {
+                          "type": { "type": "keyword" },
+                          "id": { "type": "keyword" }
+                        }
+                      },
+                      "outcome": { "type": "keyword" },
+                      "metadata": { "type": "object", "dynamic": true }
+                    }
+                  }
+                }
+              }'
+
+              echo "Registering S3 Snapshot Repository (Placeholder - requires plugin setup first)..."
+              # Note: This might fail if the plugin/keystore isn't fully ready without restart, so we allow failure here for MVP.
+              curl -k -u "$ADMIN_USER:$ADMIN_PASS" -X PUT "$OPENSEARCH_HOST/_snapshot/s3-audit-repo" -H 'Content-Type: application/json' -d '{
+                "type": "s3",
+                "settings": {
+                  "bucket": "turia-audit-snapshots",
+                  "region": "us-east-1"
+                }
+              ' || echo "Snapshot repo creation skipped (S3 plugin not configured yet)"
+
+              echo "Configuration Complete."

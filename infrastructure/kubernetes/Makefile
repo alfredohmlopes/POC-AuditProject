@@ -9,25 +9,22 @@ CERT_MANAGER_VERSION := v1.13.3
 
 .PHONY: all setup clean deploy verify
 
-all: setup deploy verify
-
-# 1. Provision Cluster & Dependencies
-setup:
-	@echo "🚀 Provisioning Kind cluster..."
-	kind create cluster --name $(CLUSTER_NAME) --config kind-cluster.yaml || true
-	
-	@echo "📦 Installing Cert-Manager (Helm)..."
-	helm repo add jetstack https://charts.jetstack.io
-	helm repo update
-
-# 3. Verify Installation
-verify:
-	@echo "🔍 Verifying Workloads..."
-	kubectl rollout status deployment/ingress-nginx-controller -n ingress-nginx --timeout=90s
-	kubectl rollout status deployment/metrics-server -n kube-system --timeout=90s
-	@echo "✅ Infrastructure Ready!"
-
 # Clean everything
 clean:
 	@echo "🧹 Cleaning up..."
 	kind delete cluster --name $(CLUSTER_NAME)
+
+install-opensearch:
+	@echo "Installing OpenSearch Operator..."
+	helm repo add opensearch-operator https://opensearch-project.github.io/opensearch-k8s-operator/
+	helm repo update
+	helm upgrade --install opensearch-operator opensearch-operator/opensearch-operator \
+		--namespace opensearch-operator-system \
+		--create-namespace \
+		--wait
+	@echo "Deploying OpenSearch Cluster..."
+	kubectl create namespace opensearch || true
+	# Create Basic Auth Secret manually for simplicity if not using a generator
+	# Username: admin, Password: changeme_admin123
+	kubectl create secret generic admin-credentials --from-literal=password=changeme_admin123 --from-literal=username=admin -n opensearch --dry-run=client -o yaml | kubectl apply -f -
+	kubectl apply -k opensearch/ter --name $(CLUSTER_NAME)

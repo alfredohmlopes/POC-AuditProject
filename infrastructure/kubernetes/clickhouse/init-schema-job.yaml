@@ -1,0 +1,89 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: clickhouse-init-schema
+  namespace: clickhouse
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: clickhouse-client
+          image: clickhouse/clickhouse-server:23.8
+          env:
+            - name: CLICKHOUSE_USER
+              value: "admin"
+            - name: CLICKHOUSE_PASSWORD
+              value: "changeme_admin123"
+          command:
+            - "/bin/bash"
+            - "-c"
+            - |
+              set -e
+              # Define Replicas (FQDNs)
+              # Using Service Pod DNS.
+              REPLICAS=(
+                "chi-audit-cluster-audit-0-0.clickhouse.svc.cluster.local"
+                "chi-audit-cluster-audit-0-1.clickhouse.svc.cluster.local"
+                "chi-audit-cluster-audit-0-2.clickhouse.svc.cluster.local"
+              )
+
+              for HOST in "${REPLICAS[@]}"; do
+                echo "------------------------------------------------"
+                echo "Processing Replica: $HOST"
+                
+                echo "Waiting for ClickHouse ($HOST)..."
+                until clickhouse-client --host $HOST --user $CLICKHOUSE_USER --password $CLICKHOUSE_PASSWORD --query "SELECT 1"; do
+                  echo "Waiting..."
+                  sleep 5
+                done
+
+                echo "Creating Database on $HOST..."
+                clickhouse-client --host $HOST --user $CLICKHOUSE_USER --password $CLICKHOUSE_PASSWORD --query "CREATE DATABASE IF NOT EXISTS audit;"
+
+                echo "Creating Table audit_events on $HOST..."
+                clickhouse-client --host $HOST --user $CLICKHOUSE_USER --password $CLICKHOUSE_PASSWORD --query "
+                CREATE TABLE IF NOT EXISTS audit.audit_events (
+                    event_id UUID,
+                    timestamp DateTime64(3),
+                    actor_id UUID,
+                    actor_type LowCardinality(String),
+                    action LowCardinality(String),
+                    resource_type LowCardinality(String),
+                    resource_id String,
+                    status LowCardinality(String),
+                    metadata String,
+                    environment LowCardinality(String)
+                ) ENGINE = ReplicatedMergeTree('/clickhouse/tables/{shard}/audit/audit_events', '{replica}')
+                PARTITION BY toYYYYMM(timestamp)
+                ORDER BY (timestamp, actor_id)
+                TTL timestamp + INTERVAL 90 DAY;
+                "
+
+                echo "Creating Materialized View tables on $HOST..."
+                clickhouse-client --host $HOST --user $CLICKHOUSE_USER --password $CLICKHOUSE_PASSWORD --query "
+                CREATE TABLE IF NOT EXISTS audit.events_hourly_mv (
+                    hour DateTime,
+                    action LowCardinality(String),
+                    count UInt64
+                ) ENGINE = ReplicatedSummingMergeTree('/clickhouse/tables/{shard}/audit/events_hourly_mv', '{replica}')
+                ORDER BY (hour, action);
+                "
+
+                echo "Creating Trigger MV on $HOST..."
+                clickhouse-client --host $HOST --user $CLICKHOUSE_USER --password $CLICKHOUSE_PASSWORD --query "
+                CREATE MATERIALIZED VIEW IF NOT EXISTS audit.events_hourly_mv_trigger TO audit.events_hourly_mv AS
+                SELECT
+                    toStartOfHour(timestamp) as hour,
+                    action,
+                    count() as count
+                FROM audit.audit_events
+                GROUP BY hour, action;
+                "
+                
+                echo "$HOST Configured Successfully."
+              done
+              
+              echo "Cluster Initialization Complete."

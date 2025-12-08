@@ -1,0 +1,9 @@
+# Values for Altinity ClickHouse Operator Helm Chart
+operator:
+  image:
+    repository: altinity/clickhouse-operator
+    tag: 0.23.5
+    pullPolicy: IfNotPresent
+
+metrics:
+  enabled: true

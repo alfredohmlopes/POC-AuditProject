@@ -1,0 +1,126 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: clickhouse-keeper
+  namespace: clickhouse
+  labels:
+    app: clickhouse-keeper
+spec:
+  ports:
+    - port: 2181
+      name: client
+    - port: 9181
+      name: raft
+  clusterIP: None
+  selector:
+    app: clickhouse-keeper
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: clickhouse-keeper-settings
+  namespace: clickhouse
+data:
+  keeper_config.xml: |
+    <clickhouse>
+        <logger>
+            <level>information</level>
+            <console>1</console>
+        </logger>
+        <listen_host>0.0.0.0</listen_host>
+        <keeper_server>
+            <tcp_port>2181</tcp_port>
+            <server_id from_env="KEEPER_ID" />
+            <log_storage_path>/var/lib/clickhouse-keeper/coordination/log</log_storage_path>
+            <snapshot_storage_path>/var/lib/clickhouse-keeper/coordination/snapshots</snapshot_storage_path>
+
+            <coordination_settings>
+                <operation_timeout_ms>10000</operation_timeout_ms>
+                <session_timeout_ms>30000</session_timeout_ms>
+                <raft_logs_level>information</raft_logs_level>
+            </coordination_settings>
+
+            <raft_configuration>
+                <server>
+                    <id>0</id>
+                    <hostname>clickhouse-keeper-0.clickhouse-keeper.clickhouse.svc.cluster.local</hostname>
+                    <port>9181</port>
+                </server>
+                <server>
+                    <id>1</id>
+                    <hostname>clickhouse-keeper-1.clickhouse-keeper.clickhouse.svc.cluster.local</hostname>
+                    <port>9181</port>
+                </server>
+                <server>
+                    <id>2</id>
+                    <hostname>clickhouse-keeper-2.clickhouse-keeper.clickhouse.svc.cluster.local</hostname>
+                    <port>9181</port>
+                </server>
+            </raft_configuration>
+        </keeper_server>
+    </clickhouse>
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: clickhouse-keeper
+  namespace: clickhouse
+spec:
+  serviceName: clickhouse-keeper
+  replicas: 3
+  selector:
+    matchLabels:
+      app: clickhouse-keeper
+  template:
+    metadata:
+      labels:
+        app: clickhouse-keeper
+    spec:
+      containers:
+      - name: clickhouse-keeper
+        image: clickhouse/clickhouse-keeper:23.8
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        ports:
+        - containerPort: 2181
+          name: client
+        - containerPort: 9181
+          name: raft
+        volumeMounts:
+        - name: keeper-config
+          mountPath: /etc/clickhouse-keeper/keeper_config.xml
+          subPath: keeper_config.xml
+        - name: data
+          mountPath: /var/lib/clickhouse-keeper
+        env:
+        - name: KEEPER_ID
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        # Hack to extract ID from pod name (clickhouse-keeper-0 -> 0)
+        command:
+        - "/bin/bash"
+        - "-c"
+        - |
+          # Extract the ordinal index from the pod name
+          export KEEPER_ID=${HOSTNAME##*-}
+          echo "Starting Keeper with ID: $KEEPER_ID"
+          /usr/bin/clickhouse-keeper --config-file /etc/clickhouse-keeper/keeper_config.xml
+      volumes:
+      - name: keeper-config
+        configMap:
+          name: clickhouse-keeper-settings
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: standard-ssd
+      resources:
+        requests:
+          storage: 1Gi
