@@ -28,13 +28,13 @@ spec:
             - |
               set -e
               echo "Waiting for OpenSearch..."
-              until curl -k -u "$ADMIN_USER:$ADMIN_PASS" "$OPENSEARCH_HOST/_cluster/health"; do
+              until curl -f -k -u "$ADMIN_USER:$ADMIN_PASS" "$OPENSEARCH_HOST/_cluster/health"; do
                 echo "Waiting..."
                 sleep 10
               done
 
               echo "Creating ISM Policy (audit-log-rotation)..."
-              curl -k -u "$ADMIN_USER:$ADMIN_PASS" -X PUT "$OPENSEARCH_HOST/_plugins/_ism/policies/audit-log-rotation" -H 'Content-Type: application/json' -d '{
+              curl -f -k -u "$ADMIN_USER:$ADMIN_PASS" -X PUT "$OPENSEARCH_HOST/_plugins/_ism/policies/audit-log-rotation" -H 'Content-Type: application/json' -d '{
                 "policy": {
                   "description": "Rotate audit logs daily and delete after 90 days",
                   "default_state": "hot",

@@ -3,4 +3,5 @@ kind: Kustomization
 
 resources:
   - cluster.yaml
+  - dashboards-deployment.yaml
   - init-config-job.yaml

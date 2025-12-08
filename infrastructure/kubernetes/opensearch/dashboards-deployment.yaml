@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: audit-dashboards
+  namespace: opensearch
+  labels:
+    app: audit-dashboards
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: audit-dashboards
+  template:
+    metadata:
+      labels:
+        app: audit-dashboards
+    spec:
+      containers:
+        - name: dashboards
+          image: opensearchproject/opensearch-dashboards:2.11.0
+          ports:
+            - containerPort: 5601
+          env:
+            - name: OPENSEARCH_HOSTS
+              value: "https://audit-search:9200"
+            - name: SERVER_NAME
+              value: "audit-dashboards"
+            - name: OPENSEARCH_SSL_VERIFICATIONMODE
+              value: "none" # Simplify for local setup with self-signed certs
+            - name: OPENSEARCH_USERNAME
+              value: "admin"
+            - name: OPENSEARCH_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: admin-credentials
+                  key: password
+          resources:
+            requests:
+              cpu: "200m"
+              memory: "512Mi"
+            limits:
+              cpu: "500m"
+              memory: "1Gi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: audit-dashboards
+  namespace: opensearch
+spec:
+  type: ClusterIP
+  selector:
+    app: audit-dashboards
+  ports:
+    - port: 5601
+      targetPort: 5601
