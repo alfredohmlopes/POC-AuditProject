@@ -29,4 +29,8 @@ spec:
         time_window: 60
         rejected_code: 429
         key: consumer_name
-        policy: local
+        policy: redis
+        redis_host: redis-master.redis.svc.cluster.local
+        redis_password: changeme_redis123
+        redis_port: 6379
+        redis_timeout: 1001
