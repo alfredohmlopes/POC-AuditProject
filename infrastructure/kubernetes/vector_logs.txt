@@ -1,0 +1,18 @@
+2025-12-09T21:26:54.870818Z  INFO vector::app: Log level is enabled. level="info"
+2025-12-09T21:26:54.874732Z  INFO vector::app: Loading configs. paths=["/etc/vector"]
+2025-12-09T21:26:54.876156Z  INFO vector::config::graph: Available components:
+"prometheus_exporter":
+  component_kind: sink
+  types: ["Metric"]
+"internal_metrics":
+  component_kind: source
+  outputs:
+    port: None, types: ["Metric"]
+"http_ingest":
+  component_kind: source
+  outputs:
+    port: None, types: ["Log"]
+"console_debug":
+  component_kind: sink
+  types: ["Log", "Metric", "Trace"]
+2025-12-09T21:26:54.876208Z ERROR vector::cli: Configuration error. error=Input "validate" for sink "console_debug" doesn't match any components. internal_log_rate_limit=false

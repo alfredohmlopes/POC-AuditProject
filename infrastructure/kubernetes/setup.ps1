@@ -135,6 +135,24 @@ function Install-Apisix {
     Write-Host "APISIX installed and routes configured." -ForegroundColor Green
 }
 
+function Install-Vector {
+    Write-Host "📥 Installing Vector Aggregator..."
+    helm repo add vector https://helm.vector.dev
+    helm repo update
+    
+    # Install Vector Chart
+    helm upgrade --install vector vector/vector `
+        --namespace vector `
+        --create-namespace `
+        -f vector/values.yaml `
+        --wait
+
+    Write-Host "Applying Vector Alias Service in APISIX namespace..."
+    kubectl apply -f apisix/vector-alias.yaml
+    
+    Write-Host "Vector installed." -ForegroundColor Green
+}
+
 # --- Main Execution ---
 
 # 4. Install Redpanda
@@ -157,5 +175,8 @@ Install-Monitoring
 
 # 10. Install APISIX
 Install-Apisix
+
+# 11. Install Vector
+Install-Vector
 
 Write-Host "✅ Infrastructure setup completed successfully!" -ForegroundColor Green

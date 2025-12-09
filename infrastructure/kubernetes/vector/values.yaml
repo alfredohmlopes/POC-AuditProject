@@ -1,0 +1,65 @@
+# Vector Helm Values
+# https://helm.vector.dev
+role: Aggregator
+
+replicas: 3
+
+customConfig:
+  data_dir: "/vector-data-buffer"
+  
+  sources:
+    http_ingest:
+      type: "http_server"
+      address: "0.0.0.0:8080"
+      encoding: "json"
+    
+    internal_metrics:
+      type: "internal_metrics"
+
+  transforms:
+    validate:
+      type: "remap"
+      inputs: ["http_ingest"]
+      source: |
+        assert!(exists(.actor.id), "actor.id is required")
+        assert!(exists(.action.name), "action.name is required")
+        assert!(exists(.resource.type), "resource.type is required")
+        assert!(exists(.resource.id), "resource.id is required")
+
+  sinks:
+    # Sink to Prometheus Exporter for scraping
+    prometheus_exporter:
+      type: "prometheus_exporter"
+      inputs: ["internal_metrics"]
+      address: "0.0.0.0:9090"
+    
+    # Placeholder for Redpanda (future story)
+    console_debug:
+      type: "console"
+      inputs: ["validate"]
+      encoding:
+        codec: "json"
+
+persistence:
+  enabled: true
+  storageClassName: "standard" # or standard-ssd depending on cluster, trying standard first or empty for default
+  accessModes:
+    - ReadWriteOnce
+  size: 1Gi
+
+service:
+  enabled: true
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+    - name: prom-exporter
+      port: 9090
+      targetPort: 9090
+
+# Enable PodMonitor or ServiceMonitor if Prometheus Operator installed
+serviceMonitor:
+  enabled: true
+  path: "/metrics"
+  port: "prom-exporter"

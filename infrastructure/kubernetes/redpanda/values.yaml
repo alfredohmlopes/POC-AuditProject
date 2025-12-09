@@ -40,7 +40,7 @@ auth:
 
 # TLS
 tls:
-  enabled: true
+  enabled: false
   certs:
     default:
       issuerRef:
@@ -57,9 +57,12 @@ external:
 console:
   enabled: true
   replicaCount: 1
-  extraEnv:
-    - name: KAFKA_TLS_INSECURE_SKIP_VERIFY
-      value: "true"
+  extraEnv: []
+  config:
+    kafka:
+      tls:
+        enabled: false
+
   resources:
     requests:
       cpu: 50m
