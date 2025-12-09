@@ -91,6 +91,50 @@ function Install-Postgres {
     Write-Host "PostgreSQL & PgBouncer installed." -ForegroundColor Green
 }
 
+function Install-Redis {
+    Write-Host "🔴 Installing Redis..."
+    helm repo add bitnami https://charts.bitnami.com/bitnami
+    helm repo update
+    helm upgrade --install redis bitnami/redis `
+        --namespace redis `
+        --create-namespace `
+        -f redis/values.yaml `
+        --wait
+    
+    Write-Host "Redis installed." -ForegroundColor Green
+}
+
+function Install-Monitoring {
+    Write-Host "🕵️ Installing Observability Stack (Prometheus + Grafana)..."
+    helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+    helm repo update
+    helm upgrade --install kube-prometheus-stack prometheus-community/kube-prometheus-stack `
+        --namespace monitoring `
+        --create-namespace `
+        -f monitoring/values.yaml `
+        --wait
+    
+    Write-Host "Observability Stack installed." -ForegroundColor Green
+}
+
+function Install-Apisix {
+    Write-Host "🛡️ Installing Apache APISIX Gateway..."
+    helm repo add apisix https://charts.apiseven.com
+    helm repo update
+    
+    # Install APISIX Chart
+    helm upgrade --install apisix apisix/apisix `
+        --namespace apisix `
+        --create-namespace `
+        -f apisix/values.yaml `
+        --wait
+
+    Write-Host "Applying APISIX Routes..."
+    kubectl apply -f apisix/routes.yaml
+    
+    Write-Host "APISIX installed and routes configured." -ForegroundColor Green
+}
+
 # --- Main Execution ---
 
 # 4. Install Redpanda
@@ -104,5 +148,14 @@ Install-OpenSearch
 
 # 7. Install PostgreSQL
 Install-Postgres
+
+# 8. Install Redis
+Install-Redis
+
+# 9. Install Monitoring
+Install-Monitoring
+
+# 10. Install APISIX
+Install-Apisix
 
 Write-Host "✅ Infrastructure setup completed successfully!" -ForegroundColor Green

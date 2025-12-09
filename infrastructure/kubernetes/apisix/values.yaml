@@ -1,0 +1,48 @@
+# APISIX Helm Values
+# https://github.com/apache/apisix-helm-chart
+
+apisix:
+  enabled: true
+  replicaCount: 3
+  
+  # Use LoadBalancer for external access (or NodePort/ClusterIP if using Ingress)
+  service:
+    type: LoadBalancer
+    port: 80
+  
+  # Enable JSON logging
+  extraEnv:
+    - name: APISIX_ENABLE_JSON_LOG
+      value: "true"
+
+  # Metrics
+  prometheus:
+    enabled: true
+    path: /apisix/prometheus/metrics
+
+  # Dashboard is deployed as a separate sub-chart usually, ensuring connectivity
+  admin:
+    credentials:
+      admin: edd1c9f034335f136f87ad84b625c8f1
+      viewer: 4054f7cf07e344346cd3f287985e76a2
+
+dashboard:
+  enabled: true
+  # dashboard service config
+  service:
+    type: LoadBalancer 
+    port: 9000
+
+ingress-controller:
+  enabled: true
+  config:
+    apisix:
+      serviceNamespace: apisix
+
+etcd:
+  enabled: true
+  replicaCount: 3
+  # For local POC, we can reduce resource usage if needed, but criteria asked for "cluster"
+  auth:
+    rbac:
+      create: false

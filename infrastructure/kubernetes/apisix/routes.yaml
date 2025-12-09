@@ -1,0 +1,32 @@
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: event-ingestion-route
+  namespace: apisix
+spec:
+  ingressClassName: apisix
+  http:
+  - name: event-ingestion
+    match:
+      paths:
+      - "/v1/events"
+      - "/v1/events/batch"
+      methods:
+      - POST
+    backends:
+    - serviceName: vector
+      servicePort: 8080
+      weight: 100
+    plugins:
+    - name: key-auth
+      enable: true
+      config:
+        header: X-API-Key
+    - name: limit-count
+      enable: true
+      config:
+        count: 10000
+        time_window: 60
+        rejected_code: 429
+        key: consumer_name
+        policy: local

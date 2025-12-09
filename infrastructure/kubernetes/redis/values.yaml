@@ -1,0 +1,48 @@
+# Redis Values for Bitnami Chart
+# https://github.com/bitnami/charts/tree/master/bitnami/redis
+
+
+
+architecture: standalone
+
+auth:
+  enabled: true
+  # Using a static password for simplicity in this POC environment.
+  # In production, this should be a reference to an existing secret.
+  password: "changeme_redis123"
+
+master:
+  persistence:
+    enabled: true
+    storageClass: "" # Use default
+    size: 5Gi
+    # Request AOF and RDB persistence
+  extraFlags:
+     - --appendonly yes
+     - --save 60 1000
+
+# Resource limits and Eviction policy
+# Redis configuration can be injected via commonConfiguration or configmap
+commonConfiguration: |-
+  # Memory Limit (should match or be slightly lower than pod limit to be safe)
+  maxmemory 200mb
+  # Eviction Policy: Evict any key using LRU when memory is full
+  maxmemory-policy allkeys-lru
+
+resources:
+  limits:
+    memory: 256Mi
+  requests:
+    memory: 128Mi
+    cpu: 100m
+
+  serviceMonitor:
+    enabled: false # Enable if Prometheus Operator is present
+
+metrics:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    namespace: monitoring
+    labels:
+      release: kube-prometheus-stack

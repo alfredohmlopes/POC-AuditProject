@@ -1,0 +1,54 @@
+# Values for kube-prometheus-stack
+# https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack
+
+prometheus:
+  prometheusSpec:
+    # 15 days retention
+    retention: 15d
+    # Scrape interval
+    scrapeInterval: 30s
+    # Persistent Storage
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 10Gi
+    # Match any ServiceMonitor in any namespace with "release: kube-prometheus-stack" label
+    # or just select all. "serviceMonitorSelectorNilUsesHelmValues" defaults to false usually
+    serviceMonitorSelectorNilUsesHelmValues: false
+    serviceMonitorSelector: {}
+    serviceMonitorNamespaceSelector: {}
+
+grafana:
+  adminPassword: "changeme_grafana123"
+  # Persistence for dashboards/users
+  persistence:
+    enabled: true
+    size: 5Gi
+  # Sidecar for auto-loading dashboards from ConfigMaps
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+  # Admin service type (LoadBalancer or NodePort if external access needed, otherwise use port-forward)
+  service:
+    type: ClusterIP
+
+alertmanager:
+  config:
+    global:
+      resolve_timeout: 5m
+    route:
+      group_by: ['job']
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 12h
+      receiver: 'null'
+      routes:
+      - match:
+          alertname: Watchdog
+        receiver: 'null'
+    receivers:
+    - name: 'null'
