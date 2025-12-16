@@ -1,0 +1,12 @@
+{
+    "actor": {
+        "id": "test"
+    },
+    "action": {
+        "name": "check"
+    },
+    "resource": {
+        "type": "t",
+        "id": "1"
+    }
+}

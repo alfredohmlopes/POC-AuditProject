@@ -1,15 +1,15 @@
 apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
-  name: event-ingestion-route
+  name: event-batch-route
   namespace: apisix
 spec:
   ingressClassName: apisix
   http:
-  - name: event-single
+  - name: event-batch
     match:
       paths:
-      - "/v1/events"
+      - "/v1/events/batch"
       methods:
       - POST
     backends:
@@ -24,7 +24,7 @@ spec:
     - name: limit-count
       enable: true
       config:
-        count: 10000
+        count: 1000
         time_window: 60
         rejected_code: 429
         key: consumer_name

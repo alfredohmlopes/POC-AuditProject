@@ -1,0 +1,26 @@
+[
+    {
+        "actor": {
+            "id": "u1"
+        },
+        "action": {
+            "name": "batch_test_1"
+        },
+        "resource": {
+            "type": "t",
+            "id": "1"
+        }
+    },
+    {
+        "actor": {
+            "id": "u2"
+        },
+        "action": {
+            "name": "batch_test_2"
+        },
+        "resource": {
+            "type": "t",
+            "id": "2"
+        }
+    }
+]

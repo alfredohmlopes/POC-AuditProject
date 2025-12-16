@@ -26,6 +26,17 @@ customConfig:
         assert!(exists(.resource.type), "resource.type is required")
         assert!(exists(.resource.id), "resource.id is required")
 
+    enrich:
+      type: "remap"
+      inputs: ["validate"]
+      source: |
+        .event_id = uuid_v7()
+        .received_at = now()
+        .event_date = format_timestamp!(.timestamp || now(), "%Y-%m-%d")
+        .processing.vector_node = get_hostname!()
+        .action.name = downcase(string!(.action.name))
+        .tenant_id = .tenant_id || "default_tenant"
+
   sinks:
     # Sink to Prometheus Exporter for scraping
     prometheus_exporter:
@@ -33,10 +44,31 @@ customConfig:
       inputs: ["internal_metrics"]
       address: "0.0.0.0:9090"
     
+    # Sink to Redpanda (Kafka)
+    redpanda:
+      type: "kafka"
+      inputs: ["enrich"]
+      bootstrap_servers: "redpanda.redpanda.svc.cluster.local:9093"
+      topic: "audit.events.v1"
+      key_field: "tenant_id"
+      compression: "lz4"
+      encoding:
+        codec: "json"
+      batch:
+        max_bytes: 1048576 # 1MB
+        timeout_secs: 1
+      acknowledgements:
+        enabled: true
+      sasl:
+        enabled: true
+        mechanism: "SCRAM-SHA-256"
+        username: "turia-producer"
+        password: "changeme_producer123"
+
     # Placeholder for Redpanda (future story)
     console_debug:
       type: "console"
-      inputs: ["validate"]
+      inputs: ["enrich"]
       encoding:
         codec: "json"
 
@@ -54,6 +86,9 @@ service:
     - name: http
       port: 8080
       targetPort: 8080
+    - name: http-batch
+      port: 8081
+      targetPort: 8081
     - name: prom-exporter
       port: 9090
       targetPort: 9090
