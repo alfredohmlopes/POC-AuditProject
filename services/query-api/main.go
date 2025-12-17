@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"context"
+	"crypto/tls"
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
@@ -28,6 +29,8 @@ type Config struct {
 	ClickHouseUser     string
 	ClickHousePassword string
 	OpenSearchAddr     string
+	OpenSearchUser     string
+	OpenSearchPassword string
 }
 
 // Event represents an audit event
@@ -85,6 +88,8 @@ func init() {
 		ClickHouseUser:     getEnv("CLICKHOUSE_USER", "default"),
 		ClickHousePassword: getEnv("CLICKHOUSE_PASSWORD", ""),
 		OpenSearchAddr:     getEnv("OPENSEARCH_ADDR", "http://audit-search.opensearch.svc.cluster.local:9200"),
+		OpenSearchUser:     getEnv("OPENSEARCH_USER", "admin"),
+		OpenSearchPassword: getEnv("OPENSEARCH_PASSWORD", "admin"),
 	}
 }
 
@@ -117,12 +122,19 @@ func initClickHouse() error {
 }
 
 func initOpenSearch() error {
+	log.Println("Initializing OpenSearch client with InsecureSkipVerify=true")
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	transport.TLSClientConfig = &tls.Config{
+		InsecureSkipVerify: true,
+	}
+	transport.MaxIdleConnsPerHost = 10
+
 	var err error
 	osClient, err = opensearch.NewClient(opensearch.Config{
 		Addresses: []string{config.OpenSearchAddr},
-		Transport: &http.Transport{
-			MaxIdleConnsPerHost: 10,
-		},
+		Username:  config.OpenSearchUser,
+		Password:  config.OpenSearchPassword,
+		Transport: transport,
 	})
 	return err
 }
@@ -318,19 +330,36 @@ func searchEventsHandler(c *fiber.Ctx, q string) error {
 	}
 
 	// Build OpenSearch query
-	// Note: Tenant filtering for OpenSearch should be added here too!
-	// For now, assuming simple search. Enhancment for later.
-	searchBody := fmt.Sprintf(`{
-		"query": {
-			"multi_match": {
-				"query": "%s",
-				"fields": ["actor.email", "actor.id", "action.name", "resource.id"],
-				"fuzziness": "AUTO"
+	var queryPart string
+	consumer, ok := c.Locals("consumer").(string)
+
+	// Base multi_match query
+	baseQuery := fmt.Sprintf(`{
+		"multi_match": {
+			"query": "%s",
+			"fields": ["actor.email", "actor.id", "action.name", "resource.id"],
+			"fuzziness": "AUTO"
+		}
+	}`, q)
+
+	if ok && consumer != "" && consumer != "audit-producer" {
+		queryPart = fmt.Sprintf(`{
+			"bool": {
+				"must": %s,
+				"filter": [
+					{ "term": { "tenant_id": "%s" } }
+				]
 			}
-		},
+		}`, baseQuery, consumer)
+	} else {
+		queryPart = baseQuery
+	}
+
+	searchBody := fmt.Sprintf(`{
+		"query": %s,
 		"size": 50,
 		"sort": [{"received_at": "desc"}]
-	}`, q)
+	}`, queryPart)
 
 	res, err := osClient.Search(
 		osClient.Search.WithContext(context.Background()),

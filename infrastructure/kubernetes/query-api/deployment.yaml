@@ -15,8 +15,8 @@ spec:
     spec:
       containers:
       - name: query-api
-        image: query-api:latest
-        imagePullPolicy: Never
+        image: query-api:v5
+        imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8081
         env:
@@ -31,7 +31,11 @@ spec:
         - name: CLICKHOUSE_PASSWORD
           value: "changeme_admin123"
         - name: OPENSEARCH_ADDR
-          value: http://audit-search-masters.opensearch.svc.cluster.local:9200
+          value: https://audit-search.opensearch.svc.cluster.local:9200
+        - name: OPENSEARCH_USER
+          value: "admin"
+        - name: OPENSEARCH_PASSWORD
+          value: "admin"
         readinessProbe:
           httpGet:
             path: /health

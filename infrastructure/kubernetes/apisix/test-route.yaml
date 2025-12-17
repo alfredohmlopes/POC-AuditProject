@@ -1,0 +1,17 @@
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: query-test-route
+  namespace: apisix
+spec:
+  ingressClassName: apisix
+  http:
+  - name: query-test
+    match:
+      paths:
+      - "/test/events"
+      methods:
+      - GET
+    backends:
+    - serviceName: query-api
+      servicePort: 8081

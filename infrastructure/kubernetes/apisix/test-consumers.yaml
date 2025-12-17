@@ -1,0 +1,21 @@
+apiVersion: apisix.apache.org/v2
+kind: ApisixConsumer
+metadata:
+  name: ana
+  namespace: apisix
+spec:
+  authParameter:
+    keyAuth:
+      value:
+        key: ana-key-123
+---
+apiVersion: apisix.apache.org/v2
+kind: ApisixConsumer
+metadata:
+  name: carlos
+  namespace: apisix
+spec:
+  authParameter:
+    keyAuth:
+      value:
+        key: carlos-key-456
