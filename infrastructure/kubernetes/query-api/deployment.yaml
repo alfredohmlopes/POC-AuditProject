@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: query-api
+  namespace: apisix
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: query-api
+  template:
+    metadata:
+      labels:
+        app: query-api
+    spec:
+      containers:
+      - name: query-api
+        image: query-api:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 8081
+        env:
+        - name: PORT
+          value: "8081"
+        - name: CLICKHOUSE_ADDR
+          value: "chi-audit-cluster-audit-0-0.clickhouse.svc.cluster.local:9000"
+        - name: CLICKHOUSE_DB
+          value: "audit"
+        - name: CLICKHOUSE_USER
+          value: "admin"
+        - name: CLICKHOUSE_PASSWORD
+          value: "changeme_admin123"
+        - name: OPENSEARCH_ADDR
+          value: http://audit-search-masters.opensearch.svc.cluster.local:9200
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8081
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8081
+          initialDelaySeconds: 10
+          periodSeconds: 20
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: query-api
+  namespace: apisix
+spec:
+  selector:
+    app: query-api
+  ports:
+  - port: 8081
+    targetPort: 8081
+  type: ClusterIP

@@ -1,0 +1,60 @@
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: event-query-route
+  namespace: apisix
+spec:
+  ingressClassName: apisix
+  http:
+  - name: event-query-list
+    match:
+      paths:
+      - "/v1/events"
+      methods:
+      - GET
+    backends:
+    - serviceName: query-api
+      servicePort: 8081
+    plugins:
+    - name: key-auth
+      enable: true
+      config:
+        header: X-API-Key
+    - name: limit-count
+      enable: true
+      config:
+        count: 1000
+        time_window: 60
+        rejected_code: 429
+        key: consumer_name
+        policy: redis
+        redis_host: redis-master.redis.svc.cluster.local
+        redis_password: changeme_redis123
+        redis_port: 6379
+        redis_timeout: 1001
+  - name: event-query-id
+    match:
+      paths:
+      - "/v1/events/*"
+      methods:
+      - GET
+    backends:
+    - serviceName: query-api
+      servicePort: 8081
+    plugins:
+    - name: key-auth
+      enable: true
+      config:
+        header: X-API-Key
+    - name: limit-count
+      enable: true
+      config:
+        count: 1000
+        time_window: 60
+        rejected_code: 429
+        key: consumer_name
+        policy: redis
+        redis_host: redis-master.redis.svc.cluster.local
+        redis_password: changeme_redis123
+        redis_port: 6379
+        redis_timeout: 1001

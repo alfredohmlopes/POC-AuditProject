@@ -1,0 +1,87 @@
+{
+    "index_patterns": [
+        "audit-events-*"
+    ],
+    "template": {
+        "settings": {
+            "number_of_shards": 3,
+            "number_of_replicas": 1,
+            "index.refresh_interval": "5s"
+        },
+        "mappings": {
+            "properties": {
+                "event_id": {
+                    "type": "keyword"
+                },
+                "tenant_id": {
+                    "type": "keyword"
+                },
+                "event_date": {
+                    "type": "date",
+                    "format": "yyyy-MM-dd"
+                },
+                "received_at": {
+                    "type": "date"
+                },
+                "actor": {
+                    "properties": {
+                        "id": {
+                            "type": "keyword"
+                        },
+                        "type": {
+                            "type": "keyword"
+                        },
+                        "email": {
+                            "type": "keyword"
+                        }
+                    }
+                },
+                "action": {
+                    "properties": {
+                        "name": {
+                            "type": "keyword"
+                        }
+                    }
+                },
+                "resource": {
+                    "properties": {
+                        "type": {
+                            "type": "keyword"
+                        },
+                        "id": {
+                            "type": "keyword"
+                        }
+                    }
+                },
+                "result": {
+                    "properties": {
+                        "success": {
+                            "type": "boolean"
+                        },
+                        "message": {
+                            "type": "text"
+                        }
+                    }
+                },
+                "context": {
+                    "properties": {
+                        "ip": {
+                            "type": "ip"
+                        },
+                        "user_agent": {
+                            "type": "text"
+                        }
+                    }
+                },
+                "processing": {
+                    "properties": {
+                        "vector_node": {
+                            "type": "keyword"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "priority": 100
+}

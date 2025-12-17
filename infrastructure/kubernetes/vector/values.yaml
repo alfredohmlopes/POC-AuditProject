@@ -13,6 +13,21 @@ customConfig:
       address: "0.0.0.0:8080"
       encoding: "json"
     
+    # Kafka consumer from Redpanda for storage pipeline
+    kafka_consumer:
+      type: "kafka"
+      bootstrap_servers: "redpanda.redpanda.svc.cluster.local:9093"
+      group_id: "audit-consumer-group"
+      topics: ["audit.events.v1"]
+      auto_offset_reset: "earliest"
+      decoding:
+        codec: "json"
+      sasl:
+        enabled: true
+        mechanism: "SCRAM-SHA-256"
+        username: "turia-producer"
+        password: "changeme_producer123"
+    
     internal_metrics:
       type: "internal_metrics"
 
@@ -36,6 +51,14 @@ customConfig:
         .processing.vector_node = get_hostname!()
         .action.name = downcase(string!(.action.name))
         .tenant_id = .tenant_id || "default_tenant"
+    
+    # Prepare events from Kafka for storage
+    prepare_storage:
+      type: "remap"
+      inputs: ["kafka_consumer"]
+      source: |
+        # Events already enriched from production, ensure event_date for partitioning
+        .event_date = .event_date || format_timestamp!(now(), "%Y-%m-%d")
 
   sinks:
     # Sink to Prometheus Exporter for scraping
@@ -44,7 +67,7 @@ customConfig:
       inputs: ["internal_metrics"]
       address: "0.0.0.0:9090"
     
-    # Sink to Redpanda (Kafka)
+    # Sink to Redpanda (Kafka) - Production
     redpanda:
       type: "kafka"
       inputs: ["enrich"]
@@ -64,11 +87,45 @@ customConfig:
         mechanism: "SCRAM-SHA-256"
         username: "turia-producer"
         password: "changeme_producer123"
-
-    # Placeholder for Redpanda (future story)
+    
+    # ClickHouse Sink for Analytics (E3.S2)
+    clickhouse:
+      type: "clickhouse"
+      inputs: ["prepare_storage"]
+      endpoint: "http://clickhouse.clickhouse.svc.cluster.local:8123"
+      database: "audit"
+      table: "events"
+      compression: "gzip"
+      batch:
+        max_events: 10000
+        timeout_secs: 5
+      request:
+        retry_attempts: 3
+        retry_initial_backoff_secs: 1
+        retry_max_duration_secs: 10
+    
+    # OpenSearch Sink for Full-Text Search (E3.S3)
+    opensearch:
+      type: "elasticsearch"
+      inputs: ["prepare_storage"]
+      endpoints: ["http://opensearch-cluster-master.opensearch.svc.cluster.local:9200"]
+      api_version: "v7"
+      mode: "bulk"
+      bulk:
+        index: '{{ "{{" }} .event_date {{ "}}" }}'
+        action: "index"
+      batch:
+        max_events: 5000
+        timeout_secs: 5
+      request:
+        retry_attempts: 3
+        retry_initial_backoff_secs: 1
+        retry_max_duration_secs: 10
+    
+    # Debug console
     console_debug:
       type: "console"
-      inputs: ["enrich"]
+      inputs: ["prepare_storage"]
       encoding:
         codec: "json"
 
