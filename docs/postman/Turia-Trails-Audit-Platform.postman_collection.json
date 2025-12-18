@@ -1,0 +1,553 @@
+{
+    "info": {
+        "name": "Turia Trails - Audit Platform",
+        "description": "Collection para testar a plataforma de auditoria Turia Trails.\n\nPré-requisitos:\n1. Ter os port-forwards rodando:\n   - Query API: kubectl port-forward svc/query-api 8091:8081 -n apisix\n   - Event Gateway: kubectl port-forward svc/event-gateway 8090:8080 -n apisix",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "variable": [
+        {
+            "key": "query_api_url",
+            "value": "http://localhost:8091"
+        },
+        {
+            "key": "event_gateway_url",
+            "value": "http://localhost:8090"
+        },
+        {
+            "key": "consumer_name",
+            "value": "audit-producer"
+        }
+    ],
+    "item": [
+        {
+            "name": "Health Checks",
+            "item": [
+                {
+                    "name": "Query API Health",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{query_api_url}}/health",
+                            "host": [
+                                "{{query_api_url}}"
+                            ],
+                            "path": [
+                                "health"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Event Gateway Health",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{event_gateway_url}}/health",
+                            "host": [
+                                "{{event_gateway_url}}"
+                            ],
+                            "path": [
+                                "health"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Ingestão de Eventos",
+            "item": [
+                {
+                    "name": "Enviar Evento (Login Success)",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "X-Consumer-Name",
+                                "value": "{{consumer_name}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"event_id\": \"postman-login-{{$timestamp}}\",\n  \"event_date\": \"{{$isoTimestamp}}\",\n  \"actor\": {\n    \"id\": \"user-123\",\n    \"email\": \"joao@empresa.com\"\n  },\n  \"action\": {\n    \"name\": \"user.login\"\n  },\n  \"resource\": {\n    \"type\": \"application\",\n    \"id\": \"app-dashboard\"\n  },\n  \"result\": {\n    \"success\": true\n  },\n  \"context\": {\n    \"ip\": \"192.168.1.100\",\n    \"user_agent\": \"Postman\"\n  }\n}"
+                        },
+                        "url": {
+                            "raw": "{{event_gateway_url}}/v1/events",
+                            "host": [
+                                "{{event_gateway_url}}"
+                            ],
+                            "path": [
+                                "v1",
+                                "events"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Enviar Evento (Login Failed)",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "X-Consumer-Name",
+                                "value": "{{consumer_name}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"event_id\": \"postman-login-fail-{{$timestamp}}\",\n  \"event_date\": \"{{$isoTimestamp}}\",\n  \"actor\": {\n    \"id\": \"unknown\",\n    \"email\": \"hacker@malicious.com\"\n  },\n  \"action\": {\n    \"name\": \"user.login\"\n  },\n  \"resource\": {\n    \"type\": \"application\",\n    \"id\": \"app-admin\"\n  },\n  \"result\": {\n    \"success\": false,\n    \"reason\": \"invalid_credentials\"\n  },\n  \"context\": {\n    \"ip\": \"10.0.0.99\"\n  }\n}"
+                        },
+                        "url": {
+                            "raw": "{{event_gateway_url}}/v1/events",
+                            "host": [
+                                "{{event_gateway_url}}"
+                            ],
+                            "path": [
+                                "v1",
+                                "events"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Enviar Evento (Criar Usuário)",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "X-Consumer-Name",
+                                "value": "{{consumer_name}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"event_id\": \"postman-create-user-{{$timestamp}}\",\n  \"event_date\": \"{{$isoTimestamp}}\",\n  \"actor\": {\n    \"id\": \"admin-001\",\n    \"email\": \"admin@empresa.com\"\n  },\n  \"action\": {\n    \"name\": \"user.create\"\n  },\n  \"resource\": {\n    \"type\": \"user\",\n    \"id\": \"new-user-456\"\n  },\n  \"result\": {\n    \"success\": true\n  }\n}"
+                        },
+                        "url": {
+                            "raw": "{{event_gateway_url}}/v1/events",
+                            "host": [
+                                "{{event_gateway_url}}"
+                            ],
+                            "path": [
+                                "v1",
+                                "events"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Enviar Evento (Deletar Recurso)",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "X-Consumer-Name",
+                                "value": "{{consumer_name}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"event_id\": \"postman-delete-{{$timestamp}}\",\n  \"event_date\": \"{{$isoTimestamp}}\",\n  \"actor\": {\n    \"id\": \"admin-001\",\n    \"email\": \"admin@empresa.com\"\n  },\n  \"action\": {\n    \"name\": \"resource.delete\"\n  },\n  \"resource\": {\n    \"type\": \"document\",\n    \"id\": \"doc-confidencial-789\"\n  },\n  \"result\": {\n    \"success\": true\n  }\n}"
+                        },
+                        "url": {
+                            "raw": "{{event_gateway_url}}/v1/events",
+                            "host": [
+                                "{{event_gateway_url}}"
+                            ],
+                            "path": [
+                                "v1",
+                                "events"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Consulta de Eventos",
+            "item": [
+                {
+                    "name": "Listar Todos os Eventos",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "X-Consumer-Name",
+                                "value": "{{consumer_name}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{query_api_url}}/v1/events?limit=20",
+                            "host": [
+                                "{{query_api_url}}"
+                            ],
+                            "path": [
+                                "v1",
+                                "events"
+                            ],
+                            "query": [
+                                {
+                                    "key": "limit",
+                                    "value": "20"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Filtrar por Ação",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "X-Consumer-Name",
+                                "value": "{{consumer_name}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{query_api_url}}/v1/events?action=user.login&limit=10",
+                            "host": [
+                                "{{query_api_url}}"
+                            ],
+                            "path": [
+                                "v1",
+                                "events"
+                            ],
+                            "query": [
+                                {
+                                    "key": "action",
+                                    "value": "user.login"
+                                },
+                                {
+                                    "key": "limit",
+                                    "value": "10"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Filtrar por Actor ID",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "X-Consumer-Name",
+                                "value": "{{consumer_name}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{query_api_url}}/v1/events?actor_id=admin-001",
+                            "host": [
+                                "{{query_api_url}}"
+                            ],
+                            "path": [
+                                "v1",
+                                "events"
+                            ],
+                            "query": [
+                                {
+                                    "key": "actor_id",
+                                    "value": "admin-001"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Filtrar por Tipo de Recurso",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "X-Consumer-Name",
+                                "value": "{{consumer_name}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{query_api_url}}/v1/events?resource_type=user",
+                            "host": [
+                                "{{query_api_url}}"
+                            ],
+                            "path": [
+                                "v1",
+                                "events"
+                            ],
+                            "query": [
+                                {
+                                    "key": "resource_type",
+                                    "value": "user"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Filtrar por Período",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "X-Consumer-Name",
+                                "value": "{{consumer_name}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{query_api_url}}/v1/events?from=2025-12-01&to=2025-12-31",
+                            "host": [
+                                "{{query_api_url}}"
+                            ],
+                            "path": [
+                                "v1",
+                                "events"
+                            ],
+                            "query": [
+                                {
+                                    "key": "from",
+                                    "value": "2025-12-01"
+                                },
+                                {
+                                    "key": "to",
+                                    "value": "2025-12-31"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Filtrar Apenas Falhas",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "X-Consumer-Name",
+                                "value": "{{consumer_name}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{query_api_url}}/v1/events?success=false",
+                            "host": [
+                                "{{query_api_url}}"
+                            ],
+                            "path": [
+                                "v1",
+                                "events"
+                            ],
+                            "query": [
+                                {
+                                    "key": "success",
+                                    "value": "false"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Busca Full-Text (OpenSearch)",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "X-Consumer-Name",
+                                "value": "{{consumer_name}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{query_api_url}}/v1/events?q=admin",
+                            "host": [
+                                "{{query_api_url}}"
+                            ],
+                            "path": [
+                                "v1",
+                                "events"
+                            ],
+                            "query": [
+                                {
+                                    "key": "q",
+                                    "value": "admin"
+                                }
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Agregações",
+            "item": [
+                {
+                    "name": "Agregação por Ação",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "X-Consumer-Name",
+                                "value": "{{consumer_name}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{query_api_url}}/v1/events/aggregations?group_by=action",
+                            "host": [
+                                "{{query_api_url}}"
+                            ],
+                            "path": [
+                                "v1",
+                                "events",
+                                "aggregations"
+                            ],
+                            "query": [
+                                {
+                                    "key": "group_by",
+                                    "value": "action"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Agregação por Actor",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "X-Consumer-Name",
+                                "value": "{{consumer_name}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{query_api_url}}/v1/events/aggregations?group_by=actor",
+                            "host": [
+                                "{{query_api_url}}"
+                            ],
+                            "path": [
+                                "v1",
+                                "events",
+                                "aggregations"
+                            ],
+                            "query": [
+                                {
+                                    "key": "group_by",
+                                    "value": "actor"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Agregação por Tipo de Recurso",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "X-Consumer-Name",
+                                "value": "{{consumer_name}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{query_api_url}}/v1/events/aggregations?group_by=resource_type",
+                            "host": [
+                                "{{query_api_url}}"
+                            ],
+                            "path": [
+                                "v1",
+                                "events",
+                                "aggregations"
+                            ],
+                            "query": [
+                                {
+                                    "key": "group_by",
+                                    "value": "resource_type"
+                                }
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Exportação",
+            "item": [
+                {
+                    "name": "Exportar CSV (todos eventos)",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "X-Consumer-Name",
+                                "value": "{{consumer_name}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{query_api_url}}/v1/events/export?format=csv",
+                            "host": [
+                                "{{query_api_url}}"
+                            ],
+                            "path": [
+                                "v1",
+                                "events",
+                                "export"
+                            ],
+                            "query": [
+                                {
+                                    "key": "format",
+                                    "value": "csv"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Exportar CSV (filtrado por ação)",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "X-Consumer-Name",
+                                "value": "{{consumer_name}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{query_api_url}}/v1/events/export?format=csv&action=user.login",
+                            "host": [
+                                "{{query_api_url}}"
+                            ],
+                            "path": [
+                                "v1",
+                                "events",
+                                "export"
+                            ],
+                            "query": [
+                                {
+                                    "key": "format",
+                                    "value": "csv"
+                                },
+                                {
+                                    "key": "action",
+                                    "value": "user.login"
+                                }
+                            ]
+                        }
+                    }
+                }
+            ]
+        }
+    ]
+}

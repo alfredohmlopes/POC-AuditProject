@@ -1,0 +1,37 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: apisix
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: apisix
+  namespaceSelector:
+    matchNames:
+    - apisix
+  endpoints:
+  - port: prometheus
+    path: /apisix/prometheus/metrics
+    interval: 30s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: query-api
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack
+spec:
+  selector:
+    matchLabels:
+      app: query-api
+  namespaceSelector:
+    matchNames:
+    - apisix
+  endpoints:
+  - port: "8081"
+    path: /metrics
+    interval: 30s

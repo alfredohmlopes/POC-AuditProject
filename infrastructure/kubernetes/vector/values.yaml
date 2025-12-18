@@ -52,13 +52,51 @@ customConfig:
         .action.name = downcase(string!(.action.name))
         .tenant_id = .tenant_id || "default_tenant"
     
-    # Prepare events from Kafka for storage
+    # Prepare events from Kafka for storage - flatten nested objects for ClickHouse
     prepare_storage:
       type: "remap"
       inputs: ["kafka_consumer"]
       source: |
-        # Events already enriched from production, ensure event_date for partitioning
+        # Flatten nested objects to match ClickHouse schema
         .event_date = .event_date || format_timestamp!(now(), "%Y-%m-%d")
+        
+        # Flatten actor object
+        .actor_id = .actor.id || ""
+        .actor_email = .actor.email || ""
+        .actor_type = .actor.type || ""
+        
+        # Flatten action object
+        .action_name = .action.name || ""
+        
+        # Flatten resource object
+        .resource_type = .resource.type || ""
+        .resource_id = .resource.id || ""
+        
+        # Flatten result object
+        .result_success = .result.success || true
+        .result_message = .result.reason || .result.message || ""
+        
+        # Flatten context object
+        .context_ip = .context.ip || ""
+        .context_user_agent = .context.user_agent || ""
+        
+        # Processing info
+        .processing_vector_node = get_hostname!()
+        
+        # Store raw event for debugging
+        .raw_event = encode_json(.)
+        
+        # Remove nested objects (ClickHouse expects flat columns)
+        del(.actor)
+        del(.action)
+        del(.resource)
+        del(.result)
+        del(.context)
+        del(.processing)
+        del(.timestamp)
+        del(.topic)
+        del(.partition)
+        del(.offset)
 
   sinks:
     # Sink to Prometheus Exporter for scraping
@@ -92,9 +130,16 @@ customConfig:
     clickhouse:
       type: "clickhouse"
       inputs: ["prepare_storage"]
-      endpoint: "http://clickhouse.clickhouse.svc.cluster.local:8123"
+      endpoint: "http://clickhouse-audit-cluster.clickhouse.svc.cluster.local:8123?input_format_skip_unknown_fields=1"
       database: "audit"
       table: "events"
+      auth:
+        strategy: "basic"
+        user: "writer"
+        password: "changeme_writer123"
+      encoding:
+        timestamp_format: "rfc3339"
+      skip_unknown_fields: true
       compression: "gzip"
       batch:
         max_events: 10000
@@ -108,7 +153,13 @@ customConfig:
     opensearch:
       type: "elasticsearch"
       inputs: ["prepare_storage"]
-      endpoints: ["http://opensearch-cluster-master.opensearch.svc.cluster.local:9200"]
+      endpoints: ["https://audit-search.opensearch.svc.cluster.local:9200"]
+      auth:
+        strategy: "basic"
+        user: "admin"
+        password: "admin"
+      tls:
+        verify_certificate: false
       api_version: "v7"
       mode: "bulk"
       bulk:
